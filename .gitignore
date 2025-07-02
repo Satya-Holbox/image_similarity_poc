@@ -3,3 +3,4 @@
 src/__pycache__
 image_faiss_index.bin
 image_metadata.json
+__pycache__
