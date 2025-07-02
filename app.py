@@ -1,9 +1,12 @@
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, File, UploadFile
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
+import shutil
+import tempfile
 
 from src.embedder import Embedder
 from src.vector_store import VectorStore
@@ -28,8 +31,6 @@ if not os.path.exists(IMAGE_METADATA_FILE):
     s3_utils.download_file(S3_BUCKET_NAME, IMAGE_METADATA_FILE, IMAGE_METADATA_FILE)
 vector_store.load_index_and_metadata(FAISS_INDEX_FILE, IMAGE_METADATA_FILE)
 known_folder_names_lower = vector_store.get_unique_folder_names()
-# print(known_folder_names_lower)
-# print("Sample metadata:", list(vector_store.metadata.items())[:5])
 app = FastAPI(
     title="Image Similarity Search API",
     description="Search for similar images using CLIP and FAISS",
@@ -68,6 +69,34 @@ def search_images(request: SearchRequest):
             image_url=image_url
         ))
     return results
+
+@app.post("/search_by_image", response_model=List[SearchResult])
+async def search_by_image(
+    file: UploadFile = File(...),
+    k: int = 5
+):
+    # Save uploaded file to a temporary location
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+
+    try:
+        query_embedding = embedder.get_image_embedding_from_file(tmp_path)
+        search_results = vector_store.search_images(query_embedding, k=k)
+        results = []
+        for distance, image_s3_path, folder_name in search_results:
+            image_url = s3_utils.get_image_url_from_s3_path(image_s3_path)
+            results.append(SearchResult(
+                distance=float(distance),
+                folder=folder_name,
+                s3_path=image_s3_path,
+                image_url=image_url
+            ))
+        return results
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    finally:
+        os.remove(tmp_path)
 
 @app.get("/")
 def root():

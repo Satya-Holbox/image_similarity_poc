@@ -8,3 +8,4 @@ tqdm
 ipython
 fastapi
 uvicorn
+python-multipart

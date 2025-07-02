@@ -14,15 +14,16 @@ def main():
     print("Welcome to the AWS Image Search System!")
     print("Choose an option:")
     print("1. Build FAISS Index (Run this first to create/update the database)")
-    print("2. Search Images (Run this after building the index)")
-    print("3. Exit")
+    print("2. Search Images by Text (Run this after building the index)")
+    print("3. Search Images by Image (Image-to-Image)")
+    print("4. Exit")
 
     s3_utils = S3Utils()
     embedder = Embedder()
     vector_store = VectorStore()
 
     while True:
-        choice = input("Enter your choice (1, 2, or 3): ").strip()
+        choice = input("Enter your choice (1, 2, 3, or 4): ").strip()
         if choice == '1':
             print("\n--- Starting FAISS Index Building Process ---")
             image_s3_info = s3_utils.get_image_keys_with_folders(S3_BUCKET_NAME, top_level_prefix="")
@@ -33,7 +34,7 @@ def main():
             vector_store.build_and_save_index(embeddings, processed_info, FAISS_INDEX_FILE, IMAGE_METADATA_FILE, s3_utils, S3_BUCKET_NAME)
             print("--- FAISS Index Building Process Completed ---")
         elif choice == '2':
-            print("\n--- Starting Image Search Process ---")
+            print("\n--- Starting Image Search Process (Text-to-Image) ---")
             if not os.path.exists(FAISS_INDEX_FILE):
                 s3_utils.download_file(S3_BUCKET_NAME, FAISS_INDEX_FILE, FAISS_INDEX_FILE)
             if not os.path.exists(IMAGE_METADATA_FILE):
@@ -62,16 +63,45 @@ def main():
                     print("\n--- Top 5 Search Results ---")
                     for i, (distance, image_s3_path, folder_name) in enumerate(search_results):
                         print(f"{i+1}. Distance: {distance:.4f}, Folder: {folder_name}, Image: {image_s3_path}")
-                        s3_utils.get_image_url_from_s3_path(image_s3_path)
+                        print(s3_utils.get_image_url_from_s3_path(image_s3_path))
                         print("-" * 30)
                 else:
                     print("No results found for your query with the given filter.")
             print("--- Image Search Process Completed ---")
         elif choice == '3':
+            print("\n--- Starting Image Search Process (Image-to-Image) ---")
+            if not os.path.exists(FAISS_INDEX_FILE):
+                s3_utils.download_file(S3_BUCKET_NAME, FAISS_INDEX_FILE, FAISS_INDEX_FILE)
+            if not os.path.exists(IMAGE_METADATA_FILE):
+                s3_utils.download_file(S3_BUCKET_NAME, IMAGE_METADATA_FILE, IMAGE_METADATA_FILE)
+            vector_store.load_index_and_metadata(FAISS_INDEX_FILE, IMAGE_METADATA_FILE)
+            while True:
+                image_path = input("\nEnter the path to your image file ('quit' to exit): ").strip()
+                if image_path.lower() == 'quit':
+                    break
+                if not os.path.exists(image_path):
+                    print("File does not exist. Please enter a valid image file path.")
+                    continue
+                try:
+                    query_embedding = embedder.get_image_embedding_from_file(image_path)
+                except Exception as e:
+                    print(f"Error processing image: {e}")
+                    continue
+                search_results = vector_store.search_images(query_embedding, k=5)
+                if search_results:
+                    print("\n--- Top 5 Search Results ---")
+                    for i, (distance, image_s3_path, folder_name) in enumerate(search_results):
+                        print(f"{i+1}. Distance: {distance:.4f}, Folder: {folder_name}, Image: {image_s3_path}")
+                        print(s3_utils.get_image_url_from_s3_path(image_s3_path))
+                        print("-" * 30)
+                else:
+                    print("No results found for your image.")
+            print("--- Image Search Process Completed ---")
+        elif choice == '4':
             print("Exiting.")
             break
         else:
-            print("Invalid choice. Please enter 1, 2, or 3.")
+            print("Invalid choice. Please enter 1, 2, 3, or 4.")
 
 if __name__ == "__main__":
     main()

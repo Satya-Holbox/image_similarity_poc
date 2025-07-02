@@ -1,12 +1,16 @@
 import boto3
 from PIL import Image
+from botocore.client import Config
 
 # --- Initialize AWS S3 Client ---
 s3 = boto3.client('s3')
 
 class S3Utils:
     def __init__(self):
-        self.s3 = boto3.client('s3')
+        self.s3 = boto3.client(
+            's3',
+            config=Config(signature_version='s3v4')
+        )
 
     def get_image_keys_with_folders(self, bucket_name, top_level_prefix=""):
         print(f"Listing images in s3://{bucket_name}/{top_level_prefix}...")
