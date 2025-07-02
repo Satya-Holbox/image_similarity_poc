@@ -1,4 +1,8 @@
 boto3
 faiss-cpu
-numpy
+numpy<2
 Pillow
+torch>=2.0,<2.6
+transformers==4.40.2
+tqdm
+ipython
