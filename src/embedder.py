@@ -1,6 +1,7 @@
 import torch
 from transformers import CLIPProcessor, CLIPModel
 import numpy as np
+from PIL import Image
 
 class Embedder:
     def __init__(self, device=None):
@@ -32,3 +33,10 @@ class Embedder:
         with torch.no_grad():
             text_features = self.model.get_text_features(**inputs)
         return text_features.cpu().numpy()
+
+    def get_image_embedding_from_file(self, image_path):
+        image = Image.open(image_path).convert("RGB")
+        inputs = self.processor(images=image, return_tensors="pt").to(self.device)
+        with torch.no_grad():
+            image_features = self.model.get_image_features(**inputs)
+        return image_features.cpu().numpy()
