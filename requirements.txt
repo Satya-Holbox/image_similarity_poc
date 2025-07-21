@@ -1,11 +1,7 @@
+# If you get a PermanentRedirect error from S3, set S3_ENDPOINT in your .env file, e.g.:
+# S3_ENDPOINT=https://img-data-poc.s3.us-east-1.amazonaws.com
 boto3
-faiss-cpu
-numpy<2
+python-dotenv
 Pillow
-torch>=2.0,<2.6
-transformers==4.40.2
-tqdm
-ipython
-fastapi
-uvicorn
-python-multipart
+numpy<2
+requests

@@ -14,8 +14,7 @@ from src.s3_utils import S3Utils
 
 import os
 
-S3_BUCKET_NAME = "image2search"
-FAISS_INDEX_FILE = "image_faiss_index.bin"
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 IMAGE_METADATA_FILE = "image_metadata.json"
 
 # Initialize once at startup
@@ -24,16 +23,13 @@ embedder = Embedder()
 vector_store = VectorStore()
 
 # Load index and metadata at startup
-if not os.path.exists(FAISS_INDEX_FILE):
-    s3_utils.download_file(S3_BUCKET_NAME, FAISS_INDEX_FILE, FAISS_INDEX_FILE)
-    print("Not present in local")
 if not os.path.exists(IMAGE_METADATA_FILE):
     s3_utils.download_file(S3_BUCKET_NAME, IMAGE_METADATA_FILE, IMAGE_METADATA_FILE)
-vector_store.load_index_and_metadata(FAISS_INDEX_FILE, IMAGE_METADATA_FILE)
+vector_store.load_index_and_metadata(IMAGE_METADATA_FILE)
 known_folder_names_lower = vector_store.get_unique_folder_names()
 app = FastAPI(
     title="Image Similarity Search API",
-    description="Search for similar images using CLIP and FAISS",
+    description="Search for similar images using Amazon Bedrock (Twelve Labs) and OpenSearch",
     version="1.0.0"
 )
 
